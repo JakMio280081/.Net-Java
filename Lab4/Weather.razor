@@ -1,0 +1,114 @@
+@page "/weather"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@rendermode InteractiveServer
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @* Licznik ciepłych dni *@
+    <p role="status">Number of warm days: @warmDays</p>
+
+    @* Przyciski filtrowania temperatury *@
+    <button class="btn btn-primary" @onclick="WarmDaysFilter">Filter Warm Days (>15°C)</button>
+    <button class="btn btn-secondary" @onclick="Restore">Restore</button>
+
+    @* Filtrowanie po nazwie *@
+    <div class="mt-3">
+        <label>Filter by summary:</label>
+        <input class="form-control" @oninput="Input" placeholder="Type to search..." />
+    </div>
+}
+
+@code {
+    private WeatherForecast[]? forecasts;
+    private WeatherForecast[]? originalForecasts; //Kopia do przywracania
+    private int warmDays;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Symulacja pobierania danych
+        var startDate = DateOnly.FromDateTime(DateTime.Now);
+        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
+
+        forecasts = Enumerable.Range(1, 10).Select(index => new WeatherForecast
+        {
+            Date = startDate.AddDays(index),
+            TemperatureC = Random.Shared.Next(-20, 55),
+            Summary = summaries[Random.Shared.Next(summaries.Length)]
+        }).ToArray();
+
+        originalForecasts = forecasts;
+        CalculateWarmDays();
+    }
+
+    private void CalculateWarmDays()
+    {
+        warmDays = forecasts?.Count(f => f.TemperatureC > 15) ?? 0;
+    }
+
+    //Filtr powyżej 15 stopni
+    private void WarmDaysFilter()
+    {
+        if (forecasts != null)
+        {
+            forecasts = forecasts.Where(f => f.TemperatureC > 15).ToArray();
+        }
+    }
+
+    //Przywracanie tabeli
+    private void Restore()
+    {
+        forecasts = originalForecasts;
+    }
+
+    //Filtrowanie nazwa
+    private void Input(ChangeEventArgs arg)
+    {
+        string filterText = arg.Value?.ToString() ?? "";
+        if (originalForecasts != null)
+        {
+            forecasts = originalForecasts
+                .Where(f => f.Summary != null && f.Summary.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+    }
+
+    private class WeatherForecast
+    {
+        public DateOnly Date { get; set; }
+        public int TemperatureC { get; set; }
+        public string? Summary { get; set; }
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    }
+}
